@@ -1,184 +1,163 @@
-from torch.utils.data import Dataset, DataLoader
-
-from torchvision import transforms
-import torch 
+import torch
+import torch.optim as optim
+import torch.nn.functional as F
 import torch.nn as nn
-import torchvision.transforms as transforms
-import torchvision.datasets as dsets
-import time
-torch.manual_seed(0)
+import torchvision.datasets
+from torchvision import transforms
 import matplotlib.pyplot as plt
+from google.colab import files
+import time
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+epochs = 50
+image_size = 32
+PREPROCESS = transforms.Compose([transforms.Resize((image_size, image_size)), transforms.ToTensor(),
+                        transforms.Normalize(mean = [0.485, 0.456, 0.406], std = [1.0, 1.0, 1.0])
+                        ])
 
-IMAGE_SIZE = 28
-composed = transforms.Compose([transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)), transforms.ToTensor()])
+PREPROCESS_TEST = transforms.Compose([transforms.Resize((image_size, image_size)), transforms.ToTensor()])
 
-dataset_train = dsets.MNIST(root='./data', train=True, download=True, transform=composed)
-dataset_val = dsets.MNIST(root='./data', train=False, download=True, transform=composed)
+batch_size = 256
+trainset = torchvision.datasets.CIFAR10(root = ".", train = True, download = True, transform = PREPROCESS)
+train_loader = torch.utils.data.DataLoader(trainset, batch_size = batch_size, shuffle=True)
 
-b_size = 64
-train_loader = torch.utils.data.DataLoader(dataset=dataset_train, batch_size=b_size )
-test_loader = torch.utils.data.DataLoader(dataset=dataset_val, batch_size=b_size )
+testset = torchvision.datasets.CIFAR10(root = ".", train = False, download = True, transform = PREPROCESS_TEST)
+test_loader = torch.utils.data.DataLoader(testset, batch_size = batch_size, shuffle=True)
+
+train_dataset, train_dataset_total = train_loader, len(trainset)
+test_dataset, test_dataset_total = test_loader, len(testset)
+
+class DefaultBlock(nn.Module):
+    def __init__(self, inchannel, outchannel):
+        super(DefaultBlock, self).__init__()
+        self.conv1 = nn.Sequential(
+                        nn.Conv2d(inchannel, outchannel, kernel_size=3, stride=1, padding=1, bias=False),
+                        nn.BatchNorm2d(outchannel)
+                        )
+
+    def forward(self, out):
+        out = self.conv1(out)
+        out = F.relu(out)
+        return out
 
 
-class CNN_batch(nn.Module):
-    
-    # Contructor
-    def __init__(self, channel_in=1, layer_1=64, layer_2=128, layer_3=256, layer_4=512, number_of_classes=10):
-        super(CNN_batch, self).__init__()
-        self.cnn1 = nn.Conv2d(in_channels=channel_in, out_channels=layer_1, kernel_size=5, padding=2)
-        # self.conv1_bn = nn.BatchNorm2d(layer_1)
-        self.cnn12 = nn.Conv2d(in_channels=layer_1, out_channels=layer_1, kernel_size=5, padding=2)
-        # self.conv12_bn = nn.BatchNorm2d(layer_1)
+class VGGModel(nn.Module):
+    def __init__(self, DefaultBlock, num_classes):
+        super(VGGModel, self).__init__()
+        self.inchannel = 3
+        self.layer1 = self.make_layer(DefaultBlock, 64, 2)
+        self.layer2 = self.make_layer(DefaultBlock, 128, 2)
+        self.layer3 = self.make_layer(DefaultBlock, 256, 3)
+        self.layer4 = self.make_layer(DefaultBlock, 512, 3)
+        self.layer5 = self.make_layer(DefaultBlock, 512, 3)
 
-        self.cnn2 = nn.Conv2d(in_channels=layer_1, out_channels=layer_2, kernel_size=5, padding=2)
-        # self.conv2_bn = nn.BatchNorm2d(layer_2)
-        self.cnn22 = nn.Conv2d(in_channels=layer_2, out_channels=layer_2, kernel_size=5, padding=2)
-        # self.conv22_bn = nn.BatchNorm2d(layer_2)
-
-        self.cnn3 = nn.Conv2d(in_channels=layer_2, out_channels=layer_3, kernel_size=5, padding=2)
-        # self.conv3_bn = nn.BatchNorm2d(layer_3)
-        self.cnn32 = nn.Conv2d(in_channels=layer_3, out_channels=layer_3, kernel_size=5, padding=2)
-        # self.conv32_bn = nn.BatchNorm2d(layer_3)
-        self.cnn33 = nn.Conv2d(in_channels=layer_3, out_channels=layer_3, kernel_size=5, padding=2)
-        # self.conv33_bn = nn.BatchNorm2d(layer_3)
-
-        self.cnn4 = nn.Conv2d(in_channels=layer_3, out_channels=layer_4, kernel_size=5, padding=2)
-        # self.conv4_bn = nn.BatchNorm2d(layer_4)
-        self.cnn42 = nn.Conv2d(in_channels=layer_4, out_channels=layer_4, kernel_size=5, padding=2)
-        # self.conv42_bn = nn.BatchNorm2d(layer_4)
-        self.cnn43 = nn.Conv2d(in_channels=layer_4, out_channels=layer_4, kernel_size=5, padding=2)
-        # self.conv43_bn = nn.BatchNorm2d(layer_4)
-
-        self.maxpool = nn.MaxPool2d(kernel_size=2)
-        self.drop = nn.Dropout(0.5)
-        
-        self.fc1 = nn.Linear(layer_4, 4096)
+        self.fc1 = nn.Linear(512, 4096)
         self.bn_fc1 = nn.BatchNorm1d(num_features=4096)
         self.fc2 = nn.Linear(4096, 4096)
-        # self.bn_fc2 = nn.BatchNorm1d(num_features=4096)
-        self.fc3 = nn.Linear(4096, number_of_classes)
-    
-    # Prediction
+        self.bn_fc2 = nn.BatchNorm1d(num_features=4096)
+        self.fc3 = nn.Linear(4096, num_classes)
+        self.drop = nn.Dropout(0.5)
+
+    def make_layer(self, block, out_channels, num_blocks):
+        layers = []
+        for x in range(num_blocks):
+            layers.append(block(self.inchannel, out_channels))
+            self.inchannel = out_channels
+        layers.append(nn.MaxPool2d(kernel_size=2))
+        return nn.Sequential(*layers)
+
     def forward(self, x):
-        x = self.cnn1(x)
-        # x = self.conv1_bn(x)
-        x = torch.relu(x)
-        x = self.cnn12(x)
-        # x = self.conv12_bn(x)
-        x = torch.relu(x)
-        x = self.maxpool(x)
-
-        x = self.cnn2(x)
-        # x = self.conv2_bn(x)
-        x = torch.relu(x)
-        x = self.cnn22(x)
-        # x = self.conv22_bn(x)
-        x = torch.relu(x)
-        x = self.maxpool(x)
-
-        x = self.cnn3(x)
-        # x = self.conv3_bn(x)
-        x = torch.relu(x)
-        x = self.cnn32(x)
-        # x = self.conv32_bn(x)
-        x = torch.relu(x)
-        x = self.cnn33(x)
-        # x = self.conv33_bn(x)
-        x = torch.relu(x)
-        x = self.maxpool(x)
-
-        x = self.cnn4(x)
-        # x = self.conv4_bn(x)
-        x = torch.relu(x)
-        x = self.cnn42(x)
-        # x = self.conv42_bn(x)
-        x = torch.relu(x)
-        x = self.cnn43(x)
-        # x = self.conv43_bn(x)
-        x = torch.relu(x)
-        x = self.maxpool(x)
-
-        x = x.view(x.size(0), -1)
-        x = self.fc1(x)
-        x = self.bn_fc1(x)
-        x = self.drop(x)
-        x = self.fc2(x)
-        # x = self.bn_fc2(x)
-        x = self.drop(x)
-        x = self.fc3(x)
-        return x
+        out = self.layer1(x)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
+        out = self.layer5(out)
+        out = out.view(out.size(0), -1)
+        out = self.fc1(out)
+        out = self.bn_fc1(out)
+        out = self.drop(out)
+        out = self.fc2(out)
+        out = self.bn_fc2(out)
+        out = self.drop(out)
+        out = self.fc3(out)
+        return out
 
 
-model = CNN_batch(channel_in=1, layer_1=64, layer_2=128, layer_3=256, layer_4=512, number_of_classes=10)
+model = VGGModel(DefaultBlock, num_classes = 10)
 if torch.cuda.is_available():
     model.cuda()
 
 criterion = nn.CrossEntropyLoss()
-learning_rate = 0.001
-optimizer = torch.optim.RMSprop(model.parameters(), lr = learning_rate)
+optimizer = torch.optim.SGD(model.parameters(), lr = 0.001)
+train_accuracy, test_accuracy, train_cost = [], [], []
 
-
-cost_list=[]
-accuracy_list_test=[]
-accuracy_list_train=[]
-N_test=len(dataset_val)
-N_train=len(dataset_train)
-n_epochs = 5
-for epoch in range(n_epochs):
-    cost=0
+for epoch in range(epochs):
+    start = time.time()
+    correct = 0
+    cost = 0
     model.train()
-    for x, y in train_loader:
-        x, y = x.to(device), y.to(device)
+    for (images,target) in train_dataset:
+        images = images.to(device)
+        target = target.to(device)
+        out = model(images)
+        loss = criterion(out, target)
+
+        # Back-propogation
         optimizer.zero_grad()
-        z = model(x)
-        loss = criterion(z, y)
         loss.backward()
         optimizer.step()
-        cost+=loss.item()
-    
-    correct=0
-    #perform a prediction on the validation  data 
+
+        _, pred = torch.max(out.data, 1)
+        correct += (pred == target).sum().item()
+        cost += loss.item()
+
+    train_cost.append(cost)
+    train_accuracy.append((correct/train_dataset_total) * 100)
+
     model.eval()
-    for x_test, y_test in test_loader:
-        x_test, y_test = x_test.to(device), y_test.to(device)
-        z = model(x_test)
-        _, yhat = torch.max(z.data, 1)
-        correct += (yhat == y_test).sum().item()
-    accuracy = correct / N_test
-    accuracy_list_test.append(accuracy)
-    # ______________
-    # train accuracy
-    correct=0
-    for x_train, y_train in train_loader:
-        x_train, y_train = x_train.to(device), y_train.to(device)
-        z = model(x_train)
-        _, yhat = torch.max(z.data, 1)
-        correct += (yhat == y_train).sum().item()
-    accuracy = correct / N_train
-    accuracy_list_train.append(accuracy)
-    cost_list.append(cost)
-    
-    # if epoch % 5 == 0:
-    #     print(epoch)
-    print(epoch)
-    
+    correct_test = 0
+    for (images_test, target_test) in test_dataset:
+        images_test = images_test.to(device)
+        target_test = target_test.to(device)
+
+        out_test = model(images_test)
+        _, pred_test = torch.max(out_test.data, 1)
+        correct_test += (pred_test == target_test).sum().item()
+    test_accuracy.append((correct_test/test_dataset_total) * 100)
+    print("\nEpoch:", epoch, " | Accuracy Train:", train_accuracy[-1], " | Accuracy Test:", test_accuracy[-1], " | Time:", time.time() - start)
+
+
+top5 = []
+for (images_test, target_test) in test_dataset:
+    images_test = images_test.to(device)
+    target_test = target_test.to(device)
+    out_test = model(images_test)
+    out_test, pred_test = torch.sort(out_test, descending=True)
+    target_test = target_test.view(-1, 1)
+    for i, y in enumerate(pred_test[:,0:5]):
+        top5.append(y in target_test[i])
+
+
+print("\n\nFinal Train Accuracy:", train_accuracy[-1])
+print("Final Test Accuracy:", test_accuracy[-1])
+print("Top-1 error rate:", 1 - test_accuracy[-1]/100)
+print("Top-5 error rate:", 1 - sum(top5)/test_dataset_total)
+
 
 fig, ax1 = plt.subplots()
-color = 'tab:green'
-ax1.plot(cost_list, color=color)
-ax1.set_xlabel('epoch')
+color = 'tab:red'
+ax1.plot(train_cost, color=color)
+ax1.set_xlabel('Epoch')
 ax1.set_ylabel('Cost', color=color)
 ax1.tick_params(axis='y', color=color)
-    
 ax2 = ax1.twinx()  
+color = 'tab:orange'
+ax2.set_ylabel('Accuracy') 
+ax2.plot( test_accuracy, color=color) 
 color = 'tab:blue'
-ax2.set_ylabel('accuracy') 
-ax2.plot( accuracy_list_test, color=color)
-# ax2.tick_params(axis='y', color=color)
- 
-color = 'tab:red'
-ax2.plot( accuracy_list_train, color=color)
-
+ax2.plot( train_accuracy, color=color)
 fig.tight_layout()
+fig.legend(['cost', 'train', 'test'])
+name = 'VGG - CIFAR10 - SGD - 0.001 - Experiment.jpg'
+plt.savefig(name)
+files.download(name)
