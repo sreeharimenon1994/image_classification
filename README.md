@@ -6,19 +6,15 @@ Two methods are used: VGG and ResNet.
 
 Anaconda:
 
-.. code:: bash
-
     conda install pytorch torchvision cudatoolkit=10.2 -c pytorch
 
 pip:
-
-.. code:: bash
 
     pip install torch torchvision
 
 #### `Cost` and `Accuracy` : 
 graph represent the values of both of `cost` and `accuracy` each epoch
-![graph](images/ResNet - CIFAR10.jpg 'graph of Accuracy and cost')
+![graph]("/images/ResNet - CIFAR10.jpg")
 
 ## How to Use
 
