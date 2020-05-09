@@ -2,6 +2,14 @@
 
 Two methods are used: VGG and ResNet.
 
+
+## Cost and Accuracy 
+graph represent the values of both of `cost` and `accuracy` each epoch
+
+![graph_resnet](/images/ResNet_CIFAR10.jpg)
+![graph_vgg](/images/VGG_CIFAR10.jpg)
+
+
 ## Installation
 
 Anaconda:
@@ -12,11 +20,6 @@ pip:
 
     pip install torch torchvision
 
-## Cost and Accuracy 
-graph represent the values of both of `cost` and `accuracy` each epoch
-
-![graph_resnet](/images/ResNet_CIFAR10.jpg)
-![graph_vgg](/images/VGG_CIFAR10.jpg)
 
 ## How to Use
 
