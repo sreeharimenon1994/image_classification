@@ -1,1 +1,34 @@
-# Image classification using VGG and ResNet.
+# Image classification
+
+Two methods are used: VGG and ResNet.
+
+## Installation
+
+Anaconda:
+
+.. code:: bash
+
+    conda install pytorch torchvision cudatoolkit=10.2 -c pytorch
+
+pip:
+
+.. code:: bash
+
+    pip install torch torchvision
+
+#### `Cost` and `Accuracy` : 
+graph represent the values of both of `cost` and `accuracy` each epoch
+![graph](images/ResNet - CIFAR10.jpg 'graph of Accuracy and cost')
+
+## How to Use
+
+To using this repo, some things you should to know:
+
+* Compatible with both of CPU and GPU, this code can automatically train on CPU or GPU
+* To execute run  `python vgg.py` or `python resnet.py` to perform image classification
+
+## Documentation
+
+You can find the API documentation on the pytorch website: 
+https://pytorch.org/docs/stable/index.html
+http://pytorch.org/docs/master/torchvision/
