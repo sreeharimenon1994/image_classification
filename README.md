@@ -33,5 +33,5 @@ To using this repo, some things you should to know:
 
 You can find the API documentation on the pytorch website:
 
-https://pytorch.org/docs/stable/index.html
-http://pytorch.org/docs/master/torchvision/
+* https://pytorch.org/docs/stable/index.html
+* http://pytorch.org/docs/master/torchvision/
