@@ -1,6 +1,6 @@
 # Image classification
 
-This code pattern demonstrates how images can be classified using Convolutional Neural Network (CNN). Two methods are used: VGG and ResNet.
+This code pattern demonstrates how images can be classified using Convolutional Neural Network (CNN). VGG-16 and ResNet-34 is implemented with Batch Normalization and Dropout for better performance.
 
 
 ## Cost and Accuracy 
