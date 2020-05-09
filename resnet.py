@@ -5,7 +5,6 @@ import torch.nn as nn
 import torchvision.datasets
 from torchvision import transforms
 import matplotlib.pyplot as plt
-from google.colab import files
 import time
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -162,4 +161,3 @@ fig.tight_layout()
 fig.legend(['cost', 'train', 'test'])
 name = 'ResNet - CIFAR10 - SGD - 0.001 - Experiment.jpg'
 plt.savefig(name)
-files.download(name)
