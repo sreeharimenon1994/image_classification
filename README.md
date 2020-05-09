@@ -6,7 +6,7 @@ This code pattern demonstrates how images can be classified using Convolutional 
 ## Cost and Accuracy 
 The graph represent the values of both of `cost` and `accuracy` each epoch. The first is ResNet and the second is VGG using CIFAR10 dataset. 
 
-![graph_resnet](/images/ResNet_CIFAR10.jpg)
+![graph_resnet](/images/ResNet34_CIFAR10.jpg)
 ![graph_vgg](/images/VGG_CIFAR10.jpg)
 
 
@@ -34,5 +34,4 @@ To using this repo, some things you should to know:
 You can find the API documentation on the pytorch website:
 
 https://pytorch.org/docs/stable/index.html
-
 http://pytorch.org/docs/master/torchvision/
