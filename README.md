@@ -12,8 +12,9 @@ pip:
 
     pip install torch torchvision
 
-#### `Cost` and `Accuracy` : 
+## Cost and Accuracy 
 graph represent the values of both of `cost` and `accuracy` each epoch
+
 ![graph]("/images/ResNet - CIFAR10.jpg")
 
 ## How to Use
