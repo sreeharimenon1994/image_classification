@@ -15,7 +15,7 @@ pip:
 ## Cost and Accuracy 
 graph represent the values of both of `cost` and `accuracy` each epoch
 
-![graph]("/images/ResNet - CIFAR10.jpg")
+![graph](/images/ResNet_CIFAR10.jpg)
 
 ## How to Use
 
